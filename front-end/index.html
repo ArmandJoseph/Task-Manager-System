@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="styles.css">
+    <title>Task Manager</title>
+</head>
+<body>
+    <div class="header">
+        <img class="icon" src="../assets/Eisen-Icon.png" alt="Eisenhower Matrix icon" width="48" height="48">
+        <h1 class="title">Task Manager</h1>
+    </div>
+
+    <h2><center>Eisenhower Matrix</center></h2>
+    <button id="addTaskButton">Add Task</button>
+    <div class="EisenhowerMatrix">
+        
+        <section class="q1">
+
+            <h3 class="qFont">Important &amp; Urgent</h3>
+
+            <ul id="taskContainerQ1"> 
+                <li id="q1Task"></li>
+            </ul>
+
+        </section>
+        
+        <section class="q2">
+
+            <h3 class="qFont">Important &amp; Not Urgent</h3>
+
+            <ul id="taskContainerQ2"> 
+                <li id="q2Task"></li>
+            </ul>
+
+        </section>
+        
+        <section class="q3">
+
+            <h3 class="qFont">Not Important &amp; Urgent</h3>
+
+            <ul id="taskContainerQ3"> 
+                <li id="q3Task"></li>
+            </ul>
+            
+        </section>
+        
+        <section class="q4">
+            
+            <h3 class="qFont">Not Important &amp; Not Urgent</h3>
+
+            <ul id="taskContainerQ4">
+                <li id="q4Task"></li>
+            </ul>
+
+        </section>
+        
+    </div>
+
+    <script src="script.js" defer></script>
+
+
+
+</body>
+</html>
