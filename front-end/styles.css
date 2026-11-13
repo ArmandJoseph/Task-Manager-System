@@ -57,6 +57,16 @@ main {
     background: #064766;
 }
 
+.taskStatus {
+    min-height: 1.4em;
+    margin: 10px 0 0;
+    color: #526371;
+}
+
+.taskStatus.isError {
+    color: #b42318;
+}
+
 .secondaryButton {
     color: #17212b;
     background: #e2e8f0;

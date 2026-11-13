@@ -8,6 +8,7 @@ const taskPriorityInput = document.getElementById("taskPriority");
 const taskDeadlineInput = document.getElementById("taskDeadline");
 const dialogTitle = document.getElementById("dialogTitle");
 const submitTaskButton = document.getElementById("submitTaskButton");
+const taskStatus = document.getElementById("taskStatus");
 const taskContainers = {
   q1: document.getElementById("taskContainerQ1"),
   q2: document.getElementById("taskContainerQ2"),
@@ -17,8 +18,9 @@ const taskContainers = {
 
 const importantPriorities = new Set(["Important", "High"]);
 let tasks = [];
-let nextTaskId = 1;
 let editingTaskId = null;
+
+loadTasks();
 
 addTaskButton.addEventListener("click", () => {
   dialogTitle.textContent = "Add a task";
@@ -37,7 +39,7 @@ addTaskDialog.addEventListener("close", () => {
   editingTaskId = null;
 });
 
-addTaskForm.addEventListener("submit", (event) => {
+addTaskForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const formData = new FormData(addTaskForm);
@@ -53,23 +55,33 @@ addTaskForm.addEventListener("submit", (event) => {
     return;
   }
 
-  if (editingTaskId === null) {
-    tasks.push({ id: nextTaskId++, ...taskData, completed: false });
-  } else {
-    const task = tasks.find((item) => item.id === editingTaskId);
-    if (!task) {
-      addTaskDialog.close();
-      return;
-    }
-    Object.assign(task, taskData);
-  }
+  try {
+    const task = editingTaskId === null
+      ? await apiRequest("/api/tasks", {
+          method: "POST",
+          body: JSON.stringify(taskData)
+        })
+      : await apiRequest(`/api/tasks/${editingTaskId}`, {
+          method: "PUT",
+          body: JSON.stringify(taskData)
+        });
 
-  renderTasks();
-  addTaskDialog.close();
+    if (editingTaskId === null) {
+      tasks.push(task);
+    } else {
+      tasks = tasks.map((item) => item.id === task.id ? task : item);
+    }
+
+    renderTasks();
+    setTaskStatus("");
+    addTaskDialog.close();
+  } catch (error) {
+    setTaskStatus(error.message, true);
+  }
 });
 
 for (const container of Object.values(taskContainers)) {
-  container.addEventListener("click", (event) => {
+  container.addEventListener("click", async (event) => {
     if (!(event.target instanceof Element)) {
       return;
     }
@@ -89,14 +101,71 @@ for (const container of Object.values(taskContainers)) {
       openEditDialog(task);
     } else if (button.dataset.action === "delete") {
       if (window.confirm(`Delete "${task.name}"?`)) {
-        tasks = tasks.filter((item) => item.id !== task.id);
-        renderTasks();
+        try {
+          await apiRequest(`/api/tasks/${task.id}`, { method: "DELETE" });
+          tasks = tasks.filter((item) => item.id !== task.id);
+          renderTasks();
+          setTaskStatus("");
+        } catch (error) {
+          setTaskStatus(error.message, true);
+        }
       }
     } else if (button.dataset.action === "toggle-complete") {
-      task.completed = !task.completed;
-      renderTasks();
+      try {
+        const updatedTask = await apiRequest(`/api/tasks/${task.id}/completion`, {
+          method: "PATCH",
+          body: JSON.stringify({ completed: !task.completed })
+        });
+        tasks = tasks.map((item) => item.id === updatedTask.id ? updatedTask : item);
+        renderTasks();
+        setTaskStatus("");
+      } catch (error) {
+        setTaskStatus(error.message, true);
+      }
     }
   });
+}
+
+async function loadTasks() {
+  try {
+    tasks = await apiRequest("/api/tasks");
+    renderTasks();
+    setTaskStatus("");
+  } catch (error) {
+    setTaskStatus(error.message, true);
+  }
+}
+
+async function apiRequest(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers
+    }
+  });
+
+  if (!response.ok) {
+    let message = `Request failed (${response.status}).`;
+    try {
+      const body = await response.json();
+      message = body.error ?? body.detail ?? body.title ?? message;
+      if (body.errors) {
+        message = Object.values(body.errors).flat().join(" ");
+      }
+    } catch {
+      // Keep the HTTP status message when the server response is not JSON.
+    }
+    throw new Error(message);
+  }
+
+  return response.status === 204 ? null : response.json();
+}
+
+function setTaskStatus(message, isError = false) {
+  taskStatus.textContent = message;
+  taskStatus.classList.toggle("isError", isError);
 }
 
 function openEditDialog(task) {
