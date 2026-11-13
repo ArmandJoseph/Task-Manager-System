@@ -1,3 +1,13 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const supabaseUrl = "YOUR_SUPABASE_URL";
+const supabaseKey = "YOUR_PUBLISHABLE_KEY";
+const supabaseConfigured = !supabaseUrl.includes("YOUR_") &&
+  !supabaseKey.includes("YOUR_");
+const supabase = supabaseConfigured
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
+
 const addTaskButton = document.getElementById("addTaskButton");
 const addTaskDialog = document.getElementById("addTaskDialog");
 const addTaskForm = document.getElementById("addTaskForm");
@@ -17,11 +27,12 @@ const taskContainers = {
 };
 
 const priorityLevels = new Set(["Important", "High"]);
-const taskStorageKey = "task-manager.tasks";
 let tasks = [];
 let editingTaskId = null;
 
-loadTasks();
+loadTasks().catch((error) => {
+  setTaskStatus(`Could not load tasks: ${error.message}`, true);
+});
 
 addTaskButton.addEventListener("click", () => {
   dialogTitle.textContent = "Add a task";
@@ -58,18 +69,13 @@ addTaskForm.addEventListener("submit", async (event) => {
 
   try {
     if (editingTaskId === null) {
-      saveTasks([...tasks, {
-        id: nextTaskId(),
-        ...taskData,
-        completed: false
-      }]);
+      await insertTask(taskData);
     } else {
-      saveTasks(tasks.map((item) => item.id === editingTaskId
-        ? { ...item, ...taskData }
-        : item));
+      await updateTask(editingTaskId, taskData);
     }
 
     addTaskDialog.close();
+    setTaskStatus("");
   } catch (error) {
     setTaskStatus(error.message, true);
   }
@@ -97,16 +103,16 @@ for (const container of Object.values(taskContainers)) {
     } else if (button.dataset.action === "delete") {
       if (window.confirm(`Delete "${task.name}"?`)) {
         try {
-          saveTasks(tasks.filter((item) => item.id !== task.id));
+          await deleteTask(task.id);
+          setTaskStatus("");
         } catch (error) {
           setTaskStatus(error.message, true);
         }
       }
     } else if (button.dataset.action === "toggle-complete") {
       try {
-        saveTasks(tasks.map((item) => item.id === task.id
-          ? { ...item, completed: !item.completed }
-          : item));
+        await updateTask(task.id, { completed: !task.completed });
+        setTaskStatus("");
       } catch (error) {
         setTaskStatus(error.message, true);
       }
@@ -114,43 +120,86 @@ for (const container of Object.values(taskContainers)) {
   });
 }
 
-function loadTasks() {
-  try {
-    const savedTasks = localStorage.getItem(taskStorageKey);
-    tasks = savedTasks === null ? [] : JSON.parse(savedTasks);
-    if (!Array.isArray(tasks) || tasks.some((task) =>
-      task === null ||
-      typeof task !== "object" ||
-      !Number.isSafeInteger(task.id) ||
-      typeof task.name !== "string" ||
-      typeof task.description !== "string" ||
-      typeof task.priority !== "string" ||
-      typeof task.completed !== "boolean"
-    )) {
-      throw new Error("Saved task data is invalid.");
-    }
-
-    renderTasks();
-    setTaskStatus("");
-  } catch (error) {
-    setTaskStatus(`Could not load saved tasks: ${error.message}`, true);
-  }
-}
-
-function saveTasks(updatedTasks) {
-  try {
-    localStorage.setItem(taskStorageKey, JSON.stringify(updatedTasks));
-  } catch (error) {
-    throw new Error(`Could not save tasks in this browser: ${error.message}`);
+async function loadTasks() {
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from("tasks")
+    .select("id, name, description, priority, deadline, completed")
+    .order("id");
+  if (error) {
+    throw new Error(`Could not load tasks from Supabase: ${error.message}`);
   }
 
-  tasks = updatedTasks;
+  tasks = data.map((task) => ({
+    ...task,
+    deadline: task.deadline ?? ""
+  }));
   renderTasks();
   setTaskStatus("");
 }
 
-function nextTaskId() {
-  return tasks.reduce((largestId, task) => Math.max(largestId, task.id), 0) + 1;
+async function insertTask(taskData) {
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from("tasks")
+    .insert({ ...taskData, deadline: taskData.deadline || null })
+    .select("id, name, description, priority, deadline, completed")
+    .single();
+  if (error) {
+    throw new Error(`Could not create task in Supabase: ${error.message}`);
+  }
+
+  tasks.push({ ...data, deadline: data.deadline ?? "" });
+  renderTasks();
+}
+
+async function updateTask(taskId, changes) {
+  const client = getSupabaseClient();
+  const updateData = { ...changes };
+  if ("deadline" in updateData && !updateData.deadline) {
+    updateData.deadline = null;
+  }
+
+  const { data, error } = await client
+    .from("tasks")
+    .update(updateData)
+    .eq("id", taskId)
+    .select("id, name, description, priority, deadline, completed")
+    .single();
+  if (error) {
+    throw new Error(`Could not update task in Supabase: ${error.message}`);
+  }
+
+  tasks = tasks.map((task) => task.id === taskId
+    ? { ...data, deadline: data.deadline ?? "" }
+    : task);
+  renderTasks();
+}
+
+async function deleteTask(taskId) {
+  const client = getSupabaseClient();
+  const { error } = await client
+    .from("tasks")
+    .delete()
+    .eq("id", taskId)
+    .select("id")
+    .single();
+  if (error) {
+    throw new Error(`Could not delete task from Supabase: ${error.message}`);
+  }
+
+  tasks = tasks.filter((task) => task.id !== taskId);
+  renderTasks();
+}
+
+function getSupabaseClient() {
+  if (!supabase) {
+    throw new Error(
+      "Set your Supabase URL and publishable key in front-end/script.js."
+    );
+  }
+
+  return supabase;
 }
 
 function setTaskStatus(message, isError = false) {
