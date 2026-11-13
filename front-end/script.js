@@ -17,6 +17,7 @@ const taskContainers = {
 };
 
 const importantPriorities = new Set(["Important", "High"]);
+const taskStorageKey = "task-manager.tasks";
 let tasks = [];
 let editingTaskId = null;
 
@@ -56,24 +57,18 @@ addTaskForm.addEventListener("submit", async (event) => {
   }
 
   try {
-    const task = editingTaskId === null
-      ? await apiRequest("/api/tasks", {
-          method: "POST",
-          body: JSON.stringify(taskData)
-        })
-      : await apiRequest(`/api/tasks/${editingTaskId}`, {
-          method: "PUT",
-          body: JSON.stringify(taskData)
-        });
-
     if (editingTaskId === null) {
-      tasks.push(task);
+      saveTasks([...tasks, {
+        id: nextTaskId(),
+        ...taskData,
+        completed: false
+      }]);
     } else {
-      tasks = tasks.map((item) => item.id === task.id ? task : item);
+      saveTasks(tasks.map((item) => item.id === editingTaskId
+        ? { ...item, ...taskData }
+        : item));
     }
 
-    renderTasks();
-    setTaskStatus("");
     addTaskDialog.close();
   } catch (error) {
     setTaskStatus(error.message, true);
@@ -102,23 +97,16 @@ for (const container of Object.values(taskContainers)) {
     } else if (button.dataset.action === "delete") {
       if (window.confirm(`Delete "${task.name}"?`)) {
         try {
-          await apiRequest(`/api/tasks/${task.id}`, { method: "DELETE" });
-          tasks = tasks.filter((item) => item.id !== task.id);
-          renderTasks();
-          setTaskStatus("");
+          saveTasks(tasks.filter((item) => item.id !== task.id));
         } catch (error) {
           setTaskStatus(error.message, true);
         }
       }
     } else if (button.dataset.action === "toggle-complete") {
       try {
-        const updatedTask = await apiRequest(`/api/tasks/${task.id}/completion`, {
-          method: "PATCH",
-          body: JSON.stringify({ completed: !task.completed })
-        });
-        tasks = tasks.map((item) => item.id === updatedTask.id ? updatedTask : item);
-        renderTasks();
-        setTaskStatus("");
+        saveTasks(tasks.map((item) => item.id === task.id
+          ? { ...item, completed: !item.completed }
+          : item));
       } catch (error) {
         setTaskStatus(error.message, true);
       }
@@ -126,41 +114,43 @@ for (const container of Object.values(taskContainers)) {
   });
 }
 
-async function loadTasks() {
+function loadTasks() {
   try {
-    tasks = await apiRequest("/api/tasks");
+    const savedTasks = localStorage.getItem(taskStorageKey);
+    tasks = savedTasks === null ? [] : JSON.parse(savedTasks);
+    if (!Array.isArray(tasks) || tasks.some((task) =>
+      task === null ||
+      typeof task !== "object" ||
+      !Number.isSafeInteger(task.id) ||
+      typeof task.name !== "string" ||
+      typeof task.description !== "string" ||
+      typeof task.priority !== "string" ||
+      typeof task.completed !== "boolean"
+    )) {
+      throw new Error("Saved task data is invalid.");
+    }
+
     renderTasks();
     setTaskStatus("");
   } catch (error) {
-    setTaskStatus(error.message, true);
+    setTaskStatus(`Could not load saved tasks: ${error.message}`, true);
   }
 }
 
-async function apiRequest(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers
-    }
-  });
-
-  if (!response.ok) {
-    let message = `Request failed (${response.status}).`;
-    try {
-      const body = await response.json();
-      message = body.error ?? body.detail ?? body.title ?? message;
-      if (body.errors) {
-        message = Object.values(body.errors).flat().join(" ");
-      }
-    } catch {
-      // Keep the HTTP status message when the server response is not JSON.
-    }
-    throw new Error(message);
+function saveTasks(updatedTasks) {
+  try {
+    localStorage.setItem(taskStorageKey, JSON.stringify(updatedTasks));
+  } catch (error) {
+    throw new Error(`Could not save tasks in this browser: ${error.message}`);
   }
 
-  return response.status === 204 ? null : response.json();
+  tasks = updatedTasks;
+  renderTasks();
+  setTaskStatus("");
+}
+
+function nextTaskId() {
+  return tasks.reduce((largestId, task) => Math.max(largestId, task.id), 0) + 1;
 }
 
 function setTaskStatus(message, isError = false) {
