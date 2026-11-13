@@ -182,7 +182,7 @@ function renderTasks() {
 }
 
 function getTaskQuadrant(task) {
-  const isImportant = pri.has(task.priority);
+  const isImportant = priorityLevels.has(task.priority);
   const daysUntilDeadline = task.deadline ? getDaysUntil(task.deadline) : null;
   const isUrgent = daysUntilDeadline !== null && daysUntilDeadline <= 5;
 
