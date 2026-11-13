@@ -16,7 +16,7 @@ const taskContainers = {
   q4: document.getElementById("taskContainerQ4")
 };
 
-const importantPriorities = new Set(["Important", "High"]);
+const priorityLevels = new Set(["Important", "High"]);
 const taskStorageKey = "task-manager.tasks";
 let tasks = [];
 let editingTaskId = null;
