@@ -34,6 +34,35 @@ main {
     padding: 24px;
 }
 
+.authPanel {
+    max-width: 460px;
+    margin: 40px auto;
+    padding: 24px;
+    border: 1px solid #d5dee5;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 2px 6px rgb(15 23 42 / 8%);
+}
+
+.authPanel h2 {
+    margin: 0 0 8px;
+}
+
+.authPanel > p {
+    line-height: 1.4;
+}
+
+.accountBar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.accountBar p {
+    overflow-wrap: anywhere;
+}
+
 .matrixTitle {
     margin: 0 0 16px;
     text-align: center;
@@ -173,27 +202,35 @@ dialog::backdrop {
     background: rgb(15 23 42 / 55%);
 }
 
+#authForm,
 #addTaskForm {
     display: grid;
     gap: 8px;
+}
+
+#addTaskForm {
     padding: 24px;
 }
 
+#authForm h2,
 #addTaskForm h2 {
     margin: 0 0 8px;
 }
 
+#authForm label,
 #addTaskForm label {
     margin-top: 6px;
     font-weight: 600;
 }
 
+#authForm label span,
 #addTaskForm label span {
     color: #64748b;
     font-size: 0.9rem;
     font-weight: 400;
 }
 
+#authForm input,
 #addTaskForm input,
 #addTaskForm textarea,
 #addTaskForm select {

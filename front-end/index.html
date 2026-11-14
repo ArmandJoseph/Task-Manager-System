@@ -13,58 +13,82 @@
     </div>
 
     <main>
-        <h2 class="matrixTitle">Eisenhower Matrix</h2>
-        <button id="addTaskButton" class="primaryButton" type="button">Add Task</button>
-        <p id="taskStatus" class="taskStatus" role="status" aria-live="polite"></p>
+        <section id="authPanel" class="authPanel" aria-labelledby="authTitle">
+            <h2 id="authTitle">Sign in to your tasks</h2>
+            <p>Create an account or sign in to manage your tasks.</p>
+            <form id="authForm">
+                <label for="authEmail">Email</label>
+                <input id="authEmail" name="email" type="email" autocomplete="email" required>
 
-        <dialog id="addTaskDialog" aria-labelledby="dialogTitle">
-            <form id="addTaskForm">
-                <h2 id="dialogTitle">Add a task</h2>
-                <label for="taskName">Name</label>
-                <input id="taskName" name="name" type="text" required maxlength="120">
-
-                <label for="taskDescription">Description</label>
-                <textarea id="taskDescription" name="description" rows="3" required></textarea>
-
-                <label for="taskPriority">Priority</label>
-                <select id="taskPriority" name="priority" required>
-                    <option value="Important">Important</option>
-                    <option value="High">High</option>
-                    <option value="Medium" selected>Medium</option>
-                    <option value="Low">Low</option>
-                </select>
-
-                <label for="taskDeadline">Deadline <span>(optional)</span></label>
-                <input id="taskDeadline" name="deadline" type="date">
+                <label for="authPassword">Password</label>
+                <input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="6" required>
 
                 <div class="formActions">
-                    <button id="cancelTaskButton" class="secondaryButton" type="button">Cancel</button>
-                    <button id="submitTaskButton" class="primaryButton" type="submit">Add task</button>
+                    <button class="secondaryButton" type="submit" value="signup">Create account</button>
+                    <button class="primaryButton" type="submit" value="signin">Sign in</button>
                 </div>
             </form>
-        </dialog>
-
-    <div class="EisenhowerMatrix">
-        <section class="q1">
-            <h3 class="qFont">Important &amp; Urgent</h3>
-            <ul id="taskContainerQ1" class="taskList"></ul>
+            <p id="authStatus" class="taskStatus" role="status" aria-live="polite"></p>
         </section>
 
-        <section class="q2">
-            <h3 class="qFont">Important &amp; Not Urgent</h3>
-            <ul id="taskContainerQ2" class="taskList"></ul>
-        </section>
+        <section id="appContent" hidden>
+            <div class="accountBar">
+                <p>Signed in as <span id="accountEmail"></span></p>
+                <button id="signOutButton" class="secondaryButton" type="button">Sign out</button>
+            </div>
+            <h2 class="matrixTitle">Eisenhower Matrix</h2>
+            <button id="addTaskButton" class="primaryButton" type="button">Add Task</button>
+            <p id="taskStatus" class="taskStatus" role="status" aria-live="polite"></p>
 
-        <section class="q3">
-            <h3 class="qFont">Not Important &amp; Urgent</h3>
-            <ul id="taskContainerQ3" class="taskList"></ul>
-        </section>
+            <dialog id="addTaskDialog" aria-labelledby="dialogTitle">
+                <form id="addTaskForm">
+                    <h2 id="dialogTitle">Add a task</h2>
+                    <label for="taskName">Name</label>
+                    <input id="taskName" name="name" type="text" required maxlength="120">
 
-        <section class="q4">
-            <h3 class="qFont">Not Important &amp; Not Urgent</h3>
-            <ul id="taskContainerQ4" class="taskList"></ul>
+                    <label for="taskDescription">Description</label>
+                    <textarea id="taskDescription" name="description" rows="3" required></textarea>
+
+                    <label for="taskPriority">Priority</label>
+                    <select id="taskPriority" name="priority" required>
+                        <option value="Important">Important</option>
+                        <option value="High">High</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+
+                    <label for="taskDeadline">Deadline <span>(optional)</span></label>
+                    <input id="taskDeadline" name="deadline" type="date">
+
+                    <div class="formActions">
+                        <button id="cancelTaskButton" class="secondaryButton" type="button">Cancel</button>
+                        <button id="submitTaskButton" class="primaryButton" type="submit">Add task</button>
+                    </div>
+                </form>
+            </dialog>
+
+            <div class="EisenhowerMatrix">
+                <section class="q1">
+                    <h3 class="qFont">Important &amp; Urgent</h3>
+                    <ul id="taskContainerQ1" class="taskList"></ul>
+                </section>
+
+                <section class="q2">
+                    <h3 class="qFont">Important &amp; Not Urgent</h3>
+                    <ul id="taskContainerQ2" class="taskList"></ul>
+                </section>
+
+                <section class="q3">
+                    <h3 class="qFont">Not Important &amp; Urgent</h3>
+                    <ul id="taskContainerQ3" class="taskList"></ul>
+                </section>
+
+                <section class="q4">
+                    <h3 class="qFont">Not Important &amp; Not Urgent</h3>
+                    <ul id="taskContainerQ4" class="taskList"></ul>
+                </section>
+            </div>
         </section>
-    </div>
     </main>
 
     <script type="module" src="script.js"></script>
