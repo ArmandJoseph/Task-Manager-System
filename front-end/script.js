@@ -8,14 +8,6 @@ const supabase = supabaseConfigured
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
-const authPanel = document.getElementById("authPanel");
-const authForm = document.getElementById("authForm");
-const authEmailInput = document.getElementById("authEmail");
-const authPasswordInput = document.getElementById("authPassword");
-const authStatus = document.getElementById("authStatus");
-const appContent = document.getElementById("appContent");
-const accountEmail = document.getElementById("accountEmail");
-const signOutButton = document.getElementById("signOutButton");
 const addTaskButton = document.getElementById("addTaskButton");
 const addTaskDialog = document.getElementById("addTaskDialog");
 const addTaskForm = document.getElementById("addTaskForm");
@@ -37,59 +29,9 @@ const taskContainers = {
 const priorityLevels = new Set(["Important", "High"]);
 let tasks = [];
 let editingTaskId = null;
-let activeUser = null;
 
-initializeAuth().catch((error) => {
-  setAuthStatus(`Could not initialize Supabase authentication: ${error.message}`, true);
-});
-
-authForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const submitter = event.submitter;
-  const action = submitter instanceof HTMLButtonElement ? submitter.value : "signin";
-  const buttons = authForm.querySelectorAll("button");
-  buttons.forEach((button) => {
-    button.disabled = true;
-  });
-
-  try {
-    const credentials = {
-      email: authEmailInput.value.trim(),
-      password: authPasswordInput.value
-    };
-    const { data, error } = action === "signup"
-      ? await supabase.auth.signUp(credentials)
-      : await supabase.auth.signInWithPassword(credentials);
-
-    if (error) {
-      throw error;
-    }
-
-    if (action === "signup" && !data.session) {
-      setAuthStatus("Account created. Check your email to confirm it, then sign in.");
-    } else {
-      setAuthStatus("");
-    }
-  } catch (error) {
-    setAuthStatus(error.message, true);
-  } finally {
-    buttons.forEach((button) => {
-      button.disabled = false;
-    });
-  }
-});
-
-signOutButton.addEventListener("click", async () => {
-  try {
-    const { error } = await getSupabaseClient().auth.signOut();
-    if (error) {
-      throw error;
-    }
-    setAuthStatus("");
-  } catch (error) {
-    setAuthStatus(`Could not sign out: ${error.message}`, true);
-  }
+loadTasks().catch((error) => {
+  setTaskStatus(`Could not load tasks: ${error.message}`, true);
 });
 
 addTaskButton.addEventListener("click", () => {
@@ -180,17 +122,12 @@ for (const container of Object.values(taskContainers)) {
 
 async function loadTasks() {
   const client = getSupabaseClient();
-  const userId = activeUser.id;
   const { data, error } = await client
     .from("tasks")
     .select("id, name, description, priority, deadline, completed")
     .order("id");
   if (error) {
     throw new Error(`Could not load tasks from Supabase: ${error.message}`);
-  }
-
-  if (activeUser?.id !== userId) {
-    return;
   }
 
   tasks = data.map((task) => ({
@@ -203,18 +140,13 @@ async function loadTasks() {
 
 async function insertTask(taskData) {
   const client = getSupabaseClient();
-  const userId = activeUser.id;
   const { data, error } = await client
     .from("tasks")
-    .insert({ ...taskData, user_id: userId, deadline: taskData.deadline || null })
+    .insert({ ...taskData, deadline: taskData.deadline || null })
     .select("id, name, description, priority, deadline, completed")
     .single();
   if (error) {
     throw new Error(`Could not create task in Supabase: ${error.message}`);
-  }
-
-  if (activeUser?.id !== userId) {
-    return;
   }
 
   tasks.push({ ...data, deadline: data.deadline ?? "" });
@@ -223,7 +155,6 @@ async function insertTask(taskData) {
 
 async function updateTask(taskId, changes) {
   const client = getSupabaseClient();
-  const userId = activeUser.id;
   const updateData = { ...changes };
   if ("deadline" in updateData && !updateData.deadline) {
     updateData.deadline = null;
@@ -239,10 +170,6 @@ async function updateTask(taskId, changes) {
     throw new Error(`Could not update task in Supabase: ${error.message}`);
   }
 
-  if (activeUser?.id !== userId) {
-    return;
-  }
-
   tasks = tasks.map((task) => task.id === taskId
     ? { ...data, deadline: data.deadline ?? "" }
     : task);
@@ -251,7 +178,6 @@ async function updateTask(taskId, changes) {
 
 async function deleteTask(taskId) {
   const client = getSupabaseClient();
-  const userId = activeUser.id;
   const { error } = await client
     .from("tasks")
     .delete()
@@ -262,63 +188,8 @@ async function deleteTask(taskId) {
     throw new Error(`Could not delete task from Supabase: ${error.message}`);
   }
 
-  if (activeUser?.id !== userId) {
-    return;
-  }
-
   tasks = tasks.filter((task) => task.id !== taskId);
   renderTasks();
-}
-
-async function initializeAuth() {
-  if (!supabase) {
-    authForm.hidden = true;
-    setAuthStatus("Set your Supabase URL and publishable key in front-end/script.js.", true);
-    return;
-  }
-
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    throw error;
-  }
-  await applySession(data.session);
-
-  supabase.auth.onAuthStateChange((_event, session) => {
-    window.setTimeout(() => {
-      applySession(session).catch((error) => {
-        setAuthStatus(`Could not update sign-in state: ${error.message}`, true);
-      });
-    }, 0);
-  });
-}
-
-async function applySession(session) {
-  const user = session?.user ?? null;
-  const previousUserId = activeUser?.id ?? null;
-  activeUser = user;
-
-  authPanel.hidden = Boolean(user);
-  appContent.hidden = !user;
-  accountEmail.textContent = user?.email ?? "";
-
-  if (!user) {
-    tasks = [];
-    renderTasks();
-    setTaskStatus("");
-    return;
-  }
-
-  if (previousUserId === user.id) {
-    return;
-  }
-
-  tasks = [];
-  renderTasks();
-  try {
-    await loadTasks();
-  } catch (error) {
-    setTaskStatus(error.message, true);
-  }
 }
 
 function getSupabaseClient() {
@@ -328,16 +199,7 @@ function getSupabaseClient() {
     );
   }
 
-  if (!activeUser) {
-    throw new Error("Sign in before managing tasks.");
-  }
-
   return supabase;
-}
-
-function setAuthStatus(message, isError = false) {
-  authStatus.textContent = message;
-  authStatus.classList.toggle("isError", isError);
 }
 
 function setTaskStatus(message, isError = false) {
