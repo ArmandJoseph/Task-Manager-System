@@ -93,8 +93,9 @@ for (const container of Object.values(taskContainers)) {
       return;
     }
 
-    const task = tasks.find((item) => item.id === Number(card.dataset.taskId));
+    const task = tasks.find((item) => String(item.id) === card.dataset.taskId);
     if (!task) {
+      setTaskStatus("Could not find this task. Reload the page and try again.", true);
       return;
     }
 
