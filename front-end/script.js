@@ -178,14 +178,17 @@ async function updateTask(taskId, changes) {
 
 async function deleteTask(taskId) {
   const client = getSupabaseClient();
-  const { error } = await client
+  const { count, error } = await client
     .from("tasks")
-    .delete()
-    .eq("id", taskId)
-    .select("id")
-    .single();
+    .delete({ count: "exact" })
+    .eq("id", taskId);
   if (error) {
     throw new Error(`Could not delete task from Supabase: ${error.message}`);
+  }
+  if (count !== 1) {
+    throw new Error(
+      "Could not delete task from Supabase: no task was deleted. Check the table's DELETE policy."
+    );
   }
 
   tasks = tasks.filter((task) => task.id !== taskId);

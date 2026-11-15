@@ -36,8 +36,10 @@ Open [http://localhost:8000/front-end/](http://localhost:8000/front-end/).
 3. Configure Supabase Row Level Security policies for the users and access
    model you intend to support. The page has no sign-in flow, so private
    per-user policies require adding authentication before they can be used.
-   Do not put a Supabase `service_role` key in browser code. A publishable key
-   is intended for the browser, but it does not replace access policies.
+   Include a `DELETE` policy for the browser role; without it, Supabase will
+   block deletion and the task will remain visible with an error. Do not put a
+   Supabase `service_role` key in browser code. A publishable key is intended
+   for the browser, but it does not replace access policies.
 
 Future Features:
 - Kanban Board for viewing the status of the task
